@@ -26,9 +26,9 @@ var (
 	versionFlag  = flag.Bool("version", false, "Print version number")
 
 	//payoutFlag   = flag.Int("faucet_amount", 10000, "Number of Ethers to transfer per user request")
-	intervalFlag = flag.Int("faucet_minutes", 1440, "Number of minutes to wait between funding rounds")
-	netnameFlag  = flag.String("faucet_name", os.Getenv("FAUCET_NAME"), "Network name to display on the frontend")
-	symbolFlag   = flag.String("faucet_symbol", os.Getenv("FAUCET_SYMBOL"), "Token symbol to display on the frontend")
+	//intervalFlag = flag.Int("faucet_minutes", os.Getenv("FAUCET_MINUTES"), "Number of minutes to wait between funding rounds")
+	netnameFlag = flag.String("faucet_name", os.Getenv("FAUCET_NAME"), "Network name to display on the frontend")
+	symbolFlag  = flag.String("faucet_symbol", os.Getenv("FAUCET_SYMBOL"), "Token symbol to display on the frontend")
 
 	keyJSONFlag  = flag.String("wallet_keyjson", os.Getenv("KEYSTORE"), "Keystore file to fund user requests with")
 	keyPassFlag  = flag.String("wallet_keypass", "password.txt", "Passphrase text file to decrypt keystore")
@@ -67,6 +67,12 @@ func Execute() {
 		port = 8080
 	}
 	httpPortFlag := flag.Int("httpport", port, "Listener port to serve HTTP connection")
+
+	interval, err := strconv.Atoi(os.Getenv("FAUCET_MINUTES"))
+	if err != nil {
+		interval = 1440
+	}
+	intervalFlag := flag.Int("faucet_minutes", interval, "Number of minutes to wait between funding rounds")
 
 	faucetAmount, err := strconv.Atoi(os.Getenv("FAUCET_AMOUNT"))
 	if err != nil {
