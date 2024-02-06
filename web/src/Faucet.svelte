@@ -3,6 +3,8 @@
   import { getAddress } from '@ethersproject/address';
   import { CloudflareProvider } from '@ethersproject/providers';
   import { setDefaults as setToast, toast } from 'bulma-toast';
+  import SocialIcons from '@rodneylab/svelte-social-icons';
+  import { web3 } from 'svelte-web3'
 
   let input = null;
   let faucetInfo = {
@@ -17,9 +19,15 @@
   let hcaptchaLoaded = false;
 
   onMount(async () => {
+    await checkNetwork();
+    if (window.ethereum) {
+        window.ethereum.on('chainChanged', (_chainId) => {
+            checkNetwork();
+        });
+    }
     const res = await fetch('/api/info');
     faucetInfo = await res.json();
-    mounted = true;
+    mounted = true;    
   });
 
   window.hcaptchaOnLoad = () => {
@@ -36,6 +44,56 @@
       sitekey: faucetInfo.hcaptcha_sitekey,
     });
   }
+
+  let networkLabel = 'Checking Network...';
+
+  async function checkNetwork() {
+    setTimeout(() => {
+      if (window.ethereum) {
+        try {
+          const currentChainId = window.ethereum.chainId;
+
+          if (currentChainId === '0x32195') {
+            networkLabel = 'Auroria'; // Correct network
+          } else {
+            networkLabel = 'Switch Network'; // Incorrect network
+          }
+        } catch (error) {
+          console.error('Error checking the network:', error);
+          networkLabel = 'Error';
+        }
+      } else {
+          console.log('Ethereum wallet not detected');
+          networkLabel = 'No Wallet Detected';
+      }
+    }, 3000);
+  }
+
+  async function addCustomNetwork() {
+    if (window.ethereum) {
+        try {
+            // Request to add a custom network
+            await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                    chainId: '0x32195', // The chainId of the network in hexadecimal, 205205 in decimal
+                    chainName: 'Auroria',
+                    nativeCurrency: {
+                        name: 'STRAX',
+                        symbol: 'STRAX', // Up to 5 characters
+                        decimals: 18
+                    },
+                    rpcUrls: ['https://auroria.rpc.stratisevm.com/'],
+                    blockExplorerUrls: ['https://auroria.explorer.stratisevm.com/']
+                }],
+            });
+        } catch (addError) {
+            alert('Error adding Auroria network:');
+        }
+    } else {
+      alert('Metamask wallet is not installed');
+    }
+}
 
   setToast({
     position: 'bottom-center',
@@ -105,6 +163,232 @@
     const lower = str.toLowerCase();
     return str.charAt(0).toUpperCase() + lower.slice(1);
   }
+
+  const onload = el => {
+    // Init ParticleAnimation
+    const canvasElements = document.querySelectorAll('[data-particle-animation]');
+    canvasElements.forEach(canvas => {
+      const options = {
+        quantity: canvas.dataset.particleQuantity,
+        staticity: canvas.dataset.particleStaticity,
+        ease: canvas.dataset.particleEase,
+      };
+      new ParticleAnimation(canvas, options);
+    });
+  }
+
+  AOS.init({
+    once: true,
+    disable: 'phone',
+    duration: 1000,
+    easing: 'ease-out-cubic',
+  });
+
+  // Particle animation
+  class ParticleAnimation {
+    constructor(el, { quantity = 30, staticity = 50, ease = 50 } = {}) {
+      this.canvas = el;
+      if (!this.canvas) return;
+      this.canvasContainer = this.canvas.parentElement;
+      this.context = this.canvas.getContext('2d');
+      this.dpr = window.devicePixelRatio || 1;
+      this.settings = {
+        quantity: quantity,
+        staticity: staticity,
+        ease: ease,
+      };
+      this.circles = [];
+      this.mouse = {
+        x: 0,
+        y: 0,
+      };
+      this.canvasSize = {
+        w: 0,
+        h: 0,
+      };
+      this.onMouseMove = this.onMouseMove.bind(this);
+      this.initCanvas = this.initCanvas.bind(this);
+      this.resizeCanvas = this.resizeCanvas.bind(this);
+      this.drawCircle = this.drawCircle.bind(this);
+      this.drawParticles = this.drawParticles.bind(this);
+      this.remapValue = this.remapValue.bind(this);
+      this.animate = this.animate.bind(this);
+      this.init();
+    }
+
+    init() {
+      this.initCanvas();
+      this.animate();
+      window.addEventListener('resize', this.initCanvas);
+      window.addEventListener('mousemove', this.onMouseMove);
+    }
+
+    initCanvas() {
+      this.resizeCanvas();
+      this.drawParticles();
+    }
+
+    onMouseMove(event) {
+      const { clientX, clientY } = event;
+      const rect = this.canvas.getBoundingClientRect();
+      const { w, h } = this.canvasSize;
+      const x = clientX - rect.left - (w / 2);
+      const y = clientY - rect.top - (h / 2);
+      const inside = x < (w / 2) && x > -(w / 2) && y < (h / 2) && y > -(h / 2);
+      if(inside) {
+        this.mouse.x = x;
+        this.mouse.y = y;
+      }
+    }
+
+    resizeCanvas() {
+      this.circles.length = 0;
+      this.canvasSize.w = this.canvasContainer.offsetWidth;
+      this.canvasSize.h = this.canvasContainer.offsetHeight;
+      this.canvas.width = this.canvasSize.w * this.dpr;
+      this.canvas.height = this.canvasSize.h * this.dpr;
+      this.canvas.style.width = this.canvasSize.w + 'px';
+      this.canvas.style.height = this.canvasSize.h + 'px';
+      this.context.scale(this.dpr, this.dpr);
+    }
+
+    circleParams() {
+      const x = Math.floor(Math.random() * this.canvasSize.w);
+      const y = Math.floor(Math.random() * this.canvasSize.h);
+      const translateX = 0;
+      const translateY = 0;
+      const size = Math.floor(Math.random() * 2) + 1;
+      const alpha = 0;
+      const targetAlpha = parseFloat((Math.random() * 0.6 + 0.1).toFixed(1));
+      const dx = (Math.random() - 0.5) * 0.2;
+      const dy = (Math.random() - 0.5) * 0.2;
+      const magnetism = 0.1 + Math.random() * 4;
+      return { x, y, translateX, translateY, size, alpha, targetAlpha, dx, dy, magnetism };
+    }
+
+    drawCircle(circle, update = false) {
+      const { x, y, translateX, translateY, size, alpha } = circle;
+      this.context.translate(translateX, translateY);
+      this.context.beginPath();
+      this.context.arc(x, y, size, 0, 2 * Math.PI);
+      this.context.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      this.context.fill();
+      this.context.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      if (!update) {
+        this.circles.push(circle);
+      }
+    }
+
+    clearContext() {
+      this.context.clearRect(0, 0, this.canvasSize.w, this.canvasSize.h);
+    }  
+
+    drawParticles() {
+      this.clearContext();
+      const particleCount = this.settings.quantity;
+      for (let i = 0; i < particleCount; i++) {
+        const circle = this.circleParams();
+        this.drawCircle(circle);
+      }
+    }
+
+    // This function remaps a value from one range to another range
+    remapValue(value, start1, end1, start2, end2) {
+      const remapped = (value - start1) * (end2 - start2) / (end1 - start1) + start2;
+      return remapped > 0 ? remapped : 0;
+    }
+
+    animate() {
+      this.clearContext();
+      this.circles.forEach((circle, i) => {
+        // Handle the alpha value
+        const edge = [
+          circle.x + circle.translateX - circle.size, // distance from left edge
+          this.canvasSize.w - circle.x - circle.translateX - circle.size, // distance from right edge
+          circle.y + circle.translateY - circle.size, // distance from top edge
+          this.canvasSize.h - circle.y - circle.translateY - circle.size, // distance from bottom edge
+        ];
+        const closestEdge = edge.reduce((a, b) => Math.min(a, b));
+        const remapClosestEdge = this.remapValue(closestEdge, 0, 20, 0, 1).toFixed(2);
+        if(remapClosestEdge > 1) {
+          circle.alpha += 0.02;
+          if(circle.alpha > circle.targetAlpha) circle.alpha = circle.targetAlpha;
+        } else {
+          circle.alpha = circle.targetAlpha * remapClosestEdge;
+        }
+        circle.x += circle.dx;
+        circle.y += circle.dy;
+        circle.translateX += ((this.mouse.x / (this.settings.staticity / circle.magnetism)) - circle.translateX) / this.settings.ease;
+        circle.translateY += ((this.mouse.y / (this.settings.staticity / circle.magnetism)) - circle.translateY) / this.settings.ease;
+        // circle gets out of the canvas
+        if (circle.x < -circle.size || circle.x > this.canvasSize.w + circle.size || circle.y < -circle.size || circle.y > this.canvasSize.h + circle.size) {
+          // remove the circle from the array
+          this.circles.splice(i, 1);
+          // create a new circle
+          const circle = this.circleParams();
+          this.drawCircle(circle);
+          // update the circle position
+        } else {
+          this.drawCircle({ ...circle, x: circle.x, y: circle.y, translateX: circle.translateX, translateY: circle.translateY, alpha: circle.alpha }, true);
+        }
+      });
+      window.requestAnimationFrame(this.animate);
+    }
+  }
+
+  // Box highlighter
+  // class Highlighter {
+  //   constructor(containerElement) {
+  //     this.container = containerElement;
+  //     this.boxes = Array.from(this.container.children);
+  //     this.mouse = {
+  //       x: 0,
+  //       y: 0,
+  //     };
+  //     this.containerSize = {
+  //       w: 0,
+  //       h: 0,
+  //     };
+  //     this.initContainer = this.initContainer.bind(this);
+  //     this.onMouseMove = this.onMouseMove.bind(this);
+  //     this.init();
+  //   }
+
+  //   initContainer() {
+  //     this.containerSize.w = this.container.offsetWidth;
+  //     this.containerSize.h = this.container.offsetHeight;        
+  //   }
+
+  //   onMouseMove(event) {
+  //     const { clientX, clientY } = event;
+  //     const rect = this.container.getBoundingClientRect();
+  //     const { w, h } = this.containerSize;
+  //     const x = clientX - rect.left;
+  //     const y = clientY - rect.top;
+  //     const inside = x < w && x > 0 && y < h && y > 0;
+  //     if (inside) {
+  //       this.mouse.x = x;
+  //       this.mouse.y = y;
+  //       this.boxes.forEach((box) => {
+  //         const boxX = -(box.getBoundingClientRect().left - rect.left) + this.mouse.x;
+  //         const boxY = -(box.getBoundingClientRect().top - rect.top) + this.mouse.y;
+  //         box.style.setProperty('--mouse-x', `${boxX}px`);
+  //         box.style.setProperty('--mouse-y', `${boxY}px`);
+  //       });
+  //     }
+  //   }
+
+  //   init() {
+  //     this.initContainer();
+  //     window.addEventListener('resize', this.initContainer);
+  //     window.addEventListener('mousemove', this.onMouseMove);
+  //   }  
+  // }
+
+  // const highlighters = document.querySelectorAll('[data-highlighter]');
+  // highlighters.forEach((highlighter) => {
+  //   new Highlighter(highlighter);
+  // });
 </script>
 
 <svelte:head>
@@ -134,13 +418,13 @@
       <!-- Desktop sign in links -->
       <ul class="flex-1 flex justify-end items-center">
         <li class="ml-6">
-          <a class="btn-sm text-slate-300 hover:text-white transition duration-150 ease-in-out w-full group [background:linear-gradient(theme(colors.slate.900),_theme(colors.slate.900))_padding-box,_conic-gradient(theme(colors.slate.400),_theme(colors.slate.700)_25%,_theme(colors.slate.700)_75%,_theme(colors.slate.400)_100%)_border-box] relative before:absolute before:inset-0 before:bg-slate-800/30 before:rounded-full before:pointer-events-none"
-            href="https://github.com/stratisproject/strax-faucet">
+          <button class="btn-sm text-slate-300 hover:text-white transition duration-150 ease-in-out w-full group [background:linear-gradient(theme(colors.slate.900),_theme(colors.slate.900))_padding-box,_conic-gradient(theme(colors.slate.400),_theme(colors.slate.700)_25%,_theme(colors.slate.700)_75%,_theme(colors.slate.400)_100%)_border-box] relative before:absolute before:inset-0 before:bg-slate-800/30 before:rounded-full before:pointer-events-none"
+          on:click={addCustomNetwork}>
             <span class="relative inline-flex items-center">
-              View Source <span
+              {networkLabel} <span
                 class="tracking-normal text-purple-500 group-hover:translate-x-0.5 transition-transform duration-150 ease-in-out ml-1">-&gt;</span>
             </span>
-          </a>
+          </button>
         </li>
       </ul>
     </div>
@@ -148,7 +432,7 @@
 </header>
 
 <!-- Page content -->
-<main class="grow">
+<main class="grow" use:onload>
   <!-- Features #2 -->
   <section class="relative">
 
@@ -160,9 +444,9 @@
     </div>
 
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
-      <div class="pt-16 md:pt-32">
+      <div class="pt-16 pt-32">
 
-        <!-- Particles animation -->
+      <!-- Particles animation -->
       <div class="absolute inset-0 -z-10" aria-hidden="true">
         <canvas data-particle-animation></canvas>
       </div>
@@ -176,7 +460,7 @@
       </div>
 
         <!-- Section header -->
-        <div class="max-w-xl mx-auto text-center md:px-1 px-5 pb-20 md:pb-20">
+        <div class="max-w-xl mx-auto text-center md:px-1 mt-20 px-5 pb-20 md:pb-20">
           <h2
             class="h2 bg-clip-text text-transparent bg-gradient-to-r from-slate-200/60 via-slate-200 to-slate-200/60 pb-4">
             Receive {faucetInfo.payout} {faucetInfo.symbol} per request.</h2>
@@ -187,7 +471,7 @@
               <div class="space-y-2">
                 <div>
                   <label class="block text-sm text-slate-300 font-medium mb-1" for="address">tSTRAX Address</label>
-                  <input id="address" class="form-input w-full h-3 p-3 rounded-full" type="text" bind:value={input} required placeholder="Enter your address or ENS name" />
+                  <input id="address" class="form-input w-full h-3 p-3 rounded-full" type="text" bind:value={input} required placeholder="Enter your address" />
                 </div>
               </div>
               <div class="mt-2">
@@ -219,7 +503,7 @@
       <!-- 1st block -->
       <div class="sm:col-span-12 lg:col-span-4 order-1 lg:order-none">
         <div class="h-full flex flex-col sm:flex-row lg:flex-col justify-between">
-          <div class="mb-4 sm:mb-0">
+          <div class="mb-4">
             <div class="mb-4">
               <!-- Logo -->
               <a class="inline-flex" href="index.html" aria-label="Cruip">
@@ -231,32 +515,23 @@
               reserved.</div>
           </div>
           <!-- Social links -->
-          <ul class="flex">
+          <ul class="flex mt-3">
             <li>
               <a class="flex justify-center items-center text-purple-500 hover:text-purple-400 transition duration-150 ease-in-out"
-                href="#0" aria-label="Twitter">
-                <svg class="w-8 h-8 fill-current" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="m13.063 9 3.495 4.475L20.601 9h2.454l-5.359 5.931L24 23h-4.938l-3.866-4.893L10.771 23H8.316l5.735-6.342L8 9h5.063Zm-.74 1.347h-1.457l8.875 11.232h1.36l-8.778-11.232Z" />
-                </svg>
+                href="https://twitter.com/stratisplatform" aria-label="Twitter">
+                <SocialIcons width="32" height="32" fgColor="#a855f7" bgColor="#262626" network="twitter" alt="twitter"/>
               </a>
             </li>
             <li class="ml-2">
               <a class="flex justify-center items-center text-purple-500 hover:text-purple-400 transition duration-150 ease-in-out"
-                href="#0" aria-label="Dev.to">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">
-                  <path class="w-8 h-8 fill-current"
-                    d="M12.29 14.3a.69.69 0 0 0-.416-.155h-.623v3.727h.623a.689.689 0 0 0 .416-.156.543.543 0 0 0 .21-.466v-2.488a.547.547 0 0 0-.21-.462ZM22.432 8H9.568C8.704 8 8.002 8.7 8 9.564v12.872A1.568 1.568 0 0 0 9.568 24h12.864c.864 0 1.566-.7 1.568-1.564V9.564A1.568 1.568 0 0 0 22.432 8Zm-8.925 9.257a1.631 1.631 0 0 1-1.727 1.687h-1.657v-5.909h1.692a1.631 1.631 0 0 1 1.692 1.689v2.533ZM17.1 14.09h-1.9v1.372h1.163v1.057H15.2v1.371h1.9v1.056h-2.217a.72.72 0 0 1-.74-.7v-4.471a.721.721 0 0 1 .7-.739H17.1v1.054Zm3.7 4.118c-.471 1.1-1.316.88-1.694 0l-1.372-5.172H18.9l1.058 4.064 1.056-4.062h1.164l-1.378 5.17Z" />
-                </svg>
+                href="https://github.com/stratisproject" aria-label="Dev.to">
+                <SocialIcons width="32" height="32" fgColor="#a855f7" bgColor="#262626" network="discord" alt="discord"/>
               </a>
             </li>
             <li class="ml-2">
               <a class="flex justify-center items-center text-purple-500 hover:text-purple-400 transition duration-150 ease-in-out"
-                href="#0" aria-label="Github">
-                <svg class="w-8 h-8 fill-current" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M16 8.2c-4.4 0-8 3.6-8 8 0 3.5 2.3 6.5 5.5 7.6.4.1.5-.2.5-.4V22c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.3 1.9.9 2.3.7.1-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-4 0-.9.3-1.6.8-2.1-.1-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8.6-.2 1.3-.3 2-.3s1.4.1 2 .3c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.6.8 1.3.8 2.1 0 3.1-1.9 3.7-3.7 3.9.3.4.6.9.6 1.6v2.2c0 .2.1.5.6.4 3.2-1.1 5.5-4.1 5.5-7.6-.1-4.4-3.7-8-8.1-8z" />
-                </svg>
+                href="https://discordapp.com/invite/9tDyfZs" aria-label="Github">
+                <SocialIcons width="32" height="32" fgColor="#a855f7" bgColor="#262626" network="github" alt="github"/>
               </a>
             </li>
           </ul>
@@ -267,72 +542,4 @@
 
   </div>
 </footer>
-
-<!--<main>
-  <section class="hero is-info is-fullheight">
-    <div class="hero-head bg-purple-900">
-      <nav class="navbar">
-        <div class="container">
-          <div class="navbar-brand">
-            <a class="navbar-item" href="../..">
-              <img src="stratis_logo_white.svg" class="mr-2" width="40" height="40 /" />
-              <span>Stratis Auroria Faucet</span>
-            </a>
-          </div>
-          <div id="navbarMenu" class="navbar-menu">
-            <div class="navbar-end">
-              <span class="navbar-item">
-                <a
-                  class="button is-white is-outlined"
-                  href="https://github.com/stratisproject/strax-faucet"
-                >
-                  <span class="icon">
-                    <i class="fa fa-github" />
-                  </span>
-                  <span>View Source</span>
-                </a>
-              </span>
-            </div>
-          </div>
-        </div>
-      </nav>
-    </div>
-
-    <div class="hero-body">
-      <div class="container has-text-centered">
-        <div class="column is-6 is-offset-3">
-          <h1 class="text-purple-900 text-3xl mb-5">
-            Receive {faucetInfo.payout}
-            {faucetInfo.symbol} per request
-          </h1>
-          <h2 class="text-xl text-purple-700 mb-5">
-            Serving from {faucetInfo.account}
-          </h2>
-          <div id="hcaptcha" data-size="invisible"></div>
-          <div class="box">
-            <div class="field is-grouped">
-              <p class="control is-expanded">
-                <input
-                  bind:value={input}
-                  class="input is-rounded"
-                  type="text"
-                  placeholder="Enter your address or ENS name"
-                />
-              </p>
-              <p class="control">
-                <button
-                  on:click={handleRequest}
-                  class="button bg-purple-900 text-white hover:text-white hover:bg-purple-600 is-rounded"
-                >
-                  Request
-                </button>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-</main>
--->
 
