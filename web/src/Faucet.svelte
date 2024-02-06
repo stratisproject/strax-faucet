@@ -76,7 +76,7 @@
           const currentChainId = window.ethereum.chainId;
 
           if (currentChainId === '0x32195') {
-            networkLabel = 'Auroria'; // Correct network
+            networkLabel = 'Straits Auroria Testnet'; // Correct network
             await connectMetaMask();
           } else {
             networkLabel = 'Switch Network'; // Incorrect network
