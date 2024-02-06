@@ -4,7 +4,6 @@
   import { CloudflareProvider } from '@ethersproject/providers';
   import { setDefaults as setToast, toast } from 'bulma-toast';
   import SocialIcons from '@rodneylab/svelte-social-icons';
-  import { web3 } from 'svelte-web3'
 
   let input = null;
   let faucetInfo = {
@@ -22,7 +21,7 @@
     await checkNetwork();
     if (window.ethereum) {
         window.ethereum.on('chainChanged', (_chainId) => {
-            checkNetwork();
+          checkNetwork();
         });
     }
     const res = await fetch('/api/info');
@@ -45,16 +44,40 @@
     });
   }
 
-  let networkLabel = 'Checking Network...';
+  let accounts = [];
 
+  async function connectMetaMask() {
+    if (window.ethereum) {
+      try {
+        // Request account access
+        accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        console.log('Connected account:', accounts[0]);
+        input = accounts[0];
+        // Proceed with the connected account
+      } catch (error) {
+        if (error.code === 4001) {
+          // User denied account access
+          console.log('User denied account access');
+        } else {
+          console.error('Error connecting to MetaMask:', error);
+        }
+      }
+    } else {
+      console.log('MetaMask is not installed');
+    }
+  }
+
+  let networkLabel = 'Checking Network...';
+  
   async function checkNetwork() {
-    setTimeout(() => {
+    setTimeout(async () => {
       if (window.ethereum) {
         try {
           const currentChainId = window.ethereum.chainId;
 
           if (currentChainId === '0x32195') {
             networkLabel = 'Auroria'; // Correct network
+            await connectMetaMask();
           } else {
             networkLabel = 'Switch Network'; // Incorrect network
           }
@@ -71,25 +94,25 @@
 
   async function addCustomNetwork() {
     if (window.ethereum) {
-        try {
-            // Request to add a custom network
-            await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                    chainId: '0x32195', // The chainId of the network in hexadecimal, 205205 in decimal
-                    chainName: 'Auroria',
-                    nativeCurrency: {
-                        name: 'STRAX',
-                        symbol: 'STRAX', // Up to 5 characters
-                        decimals: 18
-                    },
-                    rpcUrls: ['https://auroria.rpc.stratisevm.com/'],
-                    blockExplorerUrls: ['https://auroria.explorer.stratisevm.com/']
-                }],
-            });
-        } catch (addError) {
-            alert('Error adding Auroria network:');
-        }
+      try {
+        // Request to add a custom network
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x32195', // The chainId of the network in hexadecimal, 205205 in decimal
+            chainName: 'Auroria',
+            nativeCurrency: {
+                name: 'STRAX',
+                symbol: 'STRAX', // Up to 5 characters
+                decimals: 18
+            },
+            rpcUrls: ['https://auroria.rpc.stratisevm.com/'],
+            blockExplorerUrls: ['https://auroria.explorer.stratisevm.com/']
+          }],
+        });
+      } catch (addError) {
+        alert('Error adding Auroria network:');
+      }
     } else {
       alert('Metamask wallet is not installed');
     }
@@ -335,60 +358,6 @@
       window.requestAnimationFrame(this.animate);
     }
   }
-
-  // Box highlighter
-  // class Highlighter {
-  //   constructor(containerElement) {
-  //     this.container = containerElement;
-  //     this.boxes = Array.from(this.container.children);
-  //     this.mouse = {
-  //       x: 0,
-  //       y: 0,
-  //     };
-  //     this.containerSize = {
-  //       w: 0,
-  //       h: 0,
-  //     };
-  //     this.initContainer = this.initContainer.bind(this);
-  //     this.onMouseMove = this.onMouseMove.bind(this);
-  //     this.init();
-  //   }
-
-  //   initContainer() {
-  //     this.containerSize.w = this.container.offsetWidth;
-  //     this.containerSize.h = this.container.offsetHeight;        
-  //   }
-
-  //   onMouseMove(event) {
-  //     const { clientX, clientY } = event;
-  //     const rect = this.container.getBoundingClientRect();
-  //     const { w, h } = this.containerSize;
-  //     const x = clientX - rect.left;
-  //     const y = clientY - rect.top;
-  //     const inside = x < w && x > 0 && y < h && y > 0;
-  //     if (inside) {
-  //       this.mouse.x = x;
-  //       this.mouse.y = y;
-  //       this.boxes.forEach((box) => {
-  //         const boxX = -(box.getBoundingClientRect().left - rect.left) + this.mouse.x;
-  //         const boxY = -(box.getBoundingClientRect().top - rect.top) + this.mouse.y;
-  //         box.style.setProperty('--mouse-x', `${boxX}px`);
-  //         box.style.setProperty('--mouse-y', `${boxY}px`);
-  //       });
-  //     }
-  //   }
-
-  //   init() {
-  //     this.initContainer();
-  //     window.addEventListener('resize', this.initContainer);
-  //     window.addEventListener('mousemove', this.onMouseMove);
-  //   }  
-  // }
-
-  // const highlighters = document.querySelectorAll('[data-highlighter]');
-  // highlighters.forEach((highlighter) => {
-  //   new Highlighter(highlighter);
-  // });
 </script>
 
 <svelte:head>
