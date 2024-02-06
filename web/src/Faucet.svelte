@@ -100,7 +100,7 @@
           method: 'wallet_addEthereumChain',
           params: [{
             chainId: '0x32195', // The chainId of the network in hexadecimal, 205205 in decimal
-            chainName: 'Auroria',
+            chainName: 'Straits Auroria Testnet',
             nativeCurrency: {
                 name: 'STRAX',
                 symbol: 'STRAX', // Up to 5 characters
