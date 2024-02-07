@@ -103,7 +103,10 @@ func getClientIPFromRequest(proxyCount int, r *http.Request) string {
 
 	remoteIP, _, err := net.SplitHostPort(getIPAdress(r))
 	if err != nil {
-		remoteIP = r.RemoteAddr
+		remoteIP = getIPAdress(r)
+		if (remoteIP == "") {
+			remoteIP = r.RemoteAddr
+		}
 	}
 	return remoteIP
 }
