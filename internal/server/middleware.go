@@ -50,8 +50,12 @@ func (l *Limiter) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 	}
 
 	clintIP := getClientIPFromRequest(l.proxyCount, r)
+
+	fmt.Println("Client Values", address, clintIP)
+
 	l.mutex.Lock()
-	if l.limitByKey(w, address) || l.limitByKey(w, clintIP) {
+	// if l.limitByKey(w, address) {
+	if l.limitByKey(w, address) || l.limitByKey(w, clintIP) {	
 		l.mutex.Unlock()
 		return
 	}
@@ -65,6 +69,7 @@ func (l *Limiter) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 		l.cache.Remove(clintIP)
 		return
 	}
+	
 	log.WithFields(log.Fields{
 		"address":  address,
 		"clientIP": clintIP,
@@ -94,11 +99,22 @@ func getClientIPFromRequest(proxyCount int, r *http.Request) string {
 		}
 	}
 
-	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	remoteIP, _, err := net.SplitHostPort(readUserIP(r))
 	if err != nil {
 		remoteIP = r.RemoteAddr
 	}
 	return remoteIP
+}
+
+func readUserIP(r *http.Request) string {
+    IPAddress := r.Header.Get("X-Real-Ip")
+    if IPAddress == "" {
+        IPAddress = r.Header.Get("X-Forwarded-For")
+    }
+    if IPAddress == "" {
+        IPAddress = r.RemoteAddr
+    }
+    return IPAddress
 }
 
 type Captcha struct {
