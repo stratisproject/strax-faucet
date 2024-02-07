@@ -26,6 +26,9 @@ type infoResponse struct {
 	Payout          string `json:"payout"`
 	Symbol          string `json:"symbol"`
 	HcaptchaSiteKey string `json:"hcaptcha_sitekey,omitempty"`
+	RemoteAddr	  	string `json:"remote_addr,omitempty"`
+	Forward			string `json:"forward,omitempty"`
+	RealIP			string `json:"real_ip,omitempty"`
 }
 
 type malformedRequest struct {

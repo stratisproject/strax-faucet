@@ -109,6 +109,9 @@ func (s *Server) handleInfo() http.HandlerFunc {
 			Symbol:          s.cfg.symbol,
 			Payout:          strconv.Itoa(s.cfg.payout),
 			HcaptchaSiteKey: s.cfg.hcaptchaSiteKey,
+			RemoteAddr:	  	 r.RemoteAddr,
+			Forward: 		 r.Header.Get("X-Forwarded-For"),
+			RealIP: 		 r.Header.Get("X-Real-IP"),
 		}, http.StatusOK)
 	}
 }
