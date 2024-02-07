@@ -78,7 +78,8 @@ func (l *Limiter) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 
 func (l *Limiter) limitByKey(w http.ResponseWriter, key string) bool {
 	if _, ttl, err := l.cache.GetWithTTL(key); err == nil {
-		errMsg := fmt.Sprintf("You have exceeded the rate limit. Please wait %s before you try again", ttl.Round(time.Second))
+		errMsg := fmt.Sprintf("You have exceeded the rate limit for %s. Please wait %s before you try again", key, ttl.Round(time.Second))
+		fmt.Println(errMsg)
 		renderJSON(w, claimResponse{Message: errMsg}, http.StatusTooManyRequests)
 		return true
 	}
