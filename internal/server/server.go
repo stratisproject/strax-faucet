@@ -117,6 +117,7 @@ func (s *Server) handleInfo() http.HandlerFunc {
 			RemoteAddr:      r.RemoteAddr,
 			Forward:         r.Header.Get("X-Forwarded-For"),
 			RealIP:          r.Header.Get("X-Real-IP"),
+			DiscorClientId:  s.cfg.discordClientId,
 		}, http.StatusOK)
 	}
 }

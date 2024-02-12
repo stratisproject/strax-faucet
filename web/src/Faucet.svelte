@@ -12,17 +12,22 @@
     payout: 1,
     symbol: 'ETH',
     hcaptcha_sitekey: '',
+    discord_client_id: '',
   };
 
   let loggedIn = false;
   let mounted = false;
   let hcaptchaLoaded = false;
-  let loginUrl = `https://discord.com/api/oauth2/authorize?client_id=1206392566468321340&redirect_uri=${window.location.href}&response_type=code&scope=identify%20email`;
+  let loginUrl = '';
 
   onMount(async () => {
 
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
+
+    const res = await fetch('/api/info');
+    faucetInfo = await res.json();
+    loginUrl = `https://discord.com/api/oauth2/authorize?client_id=${faucetInfo.discord_client_id}&redirect_uri=${window.location.href}&response_type=code&scope=identify%20email`;
 
     await checkAuthentication();
 
@@ -36,8 +41,7 @@
           checkNetwork();
         });
     }
-    const res = await fetch('/api/info');
-    faucetInfo = await res.json();
+    
     mounted = true;    
   });
 

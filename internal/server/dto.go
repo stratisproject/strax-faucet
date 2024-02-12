@@ -43,6 +43,7 @@ type infoResponse struct {
 	RemoteAddr      string `json:"remote_addr,omitempty"`
 	Forward         string `json:"forward,omitempty"`
 	RealIP          string `json:"real_ip,omitempty"`
+	DiscorClientId  string `json:"discord_client_id"`
 }
 
 type authResponse struct {
