@@ -14,10 +14,22 @@
     hcaptcha_sitekey: '',
   };
 
+  let loggedIn = false;
   let mounted = false;
   let hcaptchaLoaded = false;
+  let loginUrl = `https://discord.com/api/oauth2/authorize?client_id=1206392566468321340&redirect_uri=${window.location.href}&response_type=code&scope=identify%20email`;
 
   onMount(async () => {
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+
+    await checkAuthentication();
+
+    if (code) {
+      exchangeCodeForToken(code);      
+    }
+
     await checkNetwork();
     if (window.ethereum) {
         window.ethereum.on('chainChanged', (_chainId) => {
@@ -28,6 +40,39 @@
     faucetInfo = await res.json();
     mounted = true;    
   });
+
+  async function checkAuthentication() {
+    try {
+      const response = await fetch('/api/check', {
+        credentials: 'include' // Ensures cookies are included in the request
+      });
+
+      if (response.ok) {
+        loggedIn = true;
+      } else {
+        loggedIn = false;
+      }
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+    }
+  }
+
+  async function exchangeCodeForToken(code) {
+    // Make an API request to your backend with the code
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+
+    if (response.ok) {
+      loggedIn = true;
+      const newUrl = window.location.pathname; // This retains the current path without the query parameters
+      window.history.replaceState({}, '', newUrl);
+    } else {
+      // Handle errors
+    }
+  }
 
   window.hcaptchaOnLoad = () => {
     hcaptchaLoaded = true;
@@ -89,7 +134,7 @@
           console.log('Ethereum wallet not detected');
           networkLabel = 'No Wallet Detected';
       }
-    }, 3000);
+    }, 2000);
   }
 
   async function addCustomNetwork() {
@@ -168,6 +213,7 @@
 
       const res = await fetch('/api/claim', {
         method: 'POST',
+        credentials: 'include',
         headers,
         body: JSON.stringify({
           address,
@@ -444,11 +490,19 @@
                 </div>
               </div>
               <div class="mt-2">
-                <button on:click={handleRequest} type="button"
-                  class="btn text-slate-300 hover:text-white transition duration-150 ease-in-out w-full group [background:linear-gradient(theme(colors.slate.900),_theme(colors.slate.900))_padding-box,_conic-gradient(theme(colors.slate.400),_theme(colors.slate.700)_25%,_theme(colors.slate.700)_75%,_theme(colors.slate.400)_100%)_border-box] relative before:absolute before:inset-0 before:bg-slate-800/30 before:rounded-full before:pointer-events-none">
-                  Request <span
-                    class="tracking-normal text-purple-300 group-hover:translate-x-0.5 transition-transform duration-150 ease-in-out ml-1">-&gt;</span>
-                </button>
+                {#if loggedIn}
+                  <button on:click={handleRequest} type="button"
+                    class="btn text-slate-300 hover:text-white transition duration-150 ease-in-out w-full group [background:linear-gradient(theme(colors.slate.900),_theme(colors.slate.900))_padding-box,_conic-gradient(theme(colors.slate.400),_theme(colors.slate.700)_25%,_theme(colors.slate.700)_75%,_theme(colors.slate.400)_100%)_border-box] relative before:absolute before:inset-0 before:bg-slate-800/30 before:rounded-full before:pointer-events-none">
+                    Request <span
+                      class="tracking-normal text-purple-300 group-hover:translate-x-0.5 transition-transform duration-150 ease-in-out ml-1">-&gt;</span>
+                  </button>                
+                {:else}
+                  <a href={loginUrl}
+                    class="btn text-slate-300 hover:text-white transition duration-150 ease-in-out w-full group [background:linear-gradient(theme(colors.slate.900),_theme(colors.slate.900))_padding-box,_conic-gradient(theme(colors.slate.400),_theme(colors.slate.700)_25%,_theme(colors.slate.700)_75%,_theme(colors.slate.400)_100%)_border-box] relative before:absolute before:inset-0 before:bg-slate-800/30 before:rounded-full before:pointer-events-none">
+                    Login with Discord <span
+                      class="tracking-normal text-purple-300 group-hover:translate-x-0.5 transition-transform duration-150 ease-in-out ml-1">-&gt;</span>
+                  </a>
+                {/if}
               </div>
               <p>&nbsp;</p>
               <p>&nbsp;</p>

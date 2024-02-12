@@ -56,7 +56,7 @@ func (l *Limiter) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 
 	l.mutex.Lock()
 	// if l.limitByKey(w, address) {
-	if l.limitByKey(w, address) || l.limitByKey(w, clintIP) {	
+	if l.limitByKey(w, address) || l.limitByKey(w, clintIP) {
 		l.mutex.Unlock()
 		return
 	}
@@ -70,7 +70,7 @@ func (l *Limiter) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 		l.cache.Remove(clintIP)
 		return
 	}
-	
+
 	log.WithFields(log.Fields{
 		"address":  address,
 		"clientIP": clintIP,
@@ -104,78 +104,77 @@ func getClientIPFromRequest(proxyCount int, r *http.Request) string {
 	remoteIP, _, err := net.SplitHostPort(getIPAdress(r))
 	if err != nil {
 		remoteIP = getIPAdress(r)
-		if (remoteIP == "") {
+		if remoteIP == "" {
 			remoteIP = r.RemoteAddr
 		}
 	}
 	return remoteIP
 }
 
-//ipRange - a structure that holds the start and end of a range of ip addresses
+// ipRange - a structure that holds the start and end of a range of ip addresses
 type ipRange struct {
-    start net.IP
-    end net.IP
+	start net.IP
+	end   net.IP
 }
 
 // inRange - check to see if a given ip address is within a range given
 func inRange(r ipRange, ipAddress net.IP) bool {
-    // strcmp type byte comparison
-    if bytes.Compare(ipAddress, r.start) >= 0 && bytes.Compare(ipAddress, r.end) < 0 {
-        return true
-    }
-    return false
+	// strcmp type byte comparison
+	if bytes.Compare(ipAddress, r.start) >= 0 && bytes.Compare(ipAddress, r.end) < 0 {
+		return true
+	}
+	return false
 }
 
 var privateRanges = []ipRange{
-    ipRange{
-        start: net.ParseIP("10.0.0.0"),
-        end:   net.ParseIP("10.255.255.255"),
-    },
-    ipRange{
-        start: net.ParseIP("100.64.0.0"),
-        end:   net.ParseIP("100.127.255.255"),
-    },
-    ipRange{
-        start: net.ParseIP("172.16.0.0"),
-        end:   net.ParseIP("172.31.255.255"),
-    },
-    ipRange{
-        start: net.ParseIP("192.0.0.0"),
-        end:   net.ParseIP("192.0.0.255"),
-    },
-    ipRange{
-        start: net.ParseIP("192.168.0.0"),
-        end:   net.ParseIP("192.168.255.255"),
-    },
-    ipRange{
-        start: net.ParseIP("198.18.0.0"),
-        end:   net.ParseIP("198.19.255.255"),
-    },
+	ipRange{
+		start: net.ParseIP("10.0.0.0"),
+		end:   net.ParseIP("10.255.255.255"),
+	},
+	ipRange{
+		start: net.ParseIP("100.64.0.0"),
+		end:   net.ParseIP("100.127.255.255"),
+	},
+	ipRange{
+		start: net.ParseIP("172.16.0.0"),
+		end:   net.ParseIP("172.31.255.255"),
+	},
+	ipRange{
+		start: net.ParseIP("192.0.0.0"),
+		end:   net.ParseIP("192.0.0.255"),
+	},
+	ipRange{
+		start: net.ParseIP("192.168.0.0"),
+		end:   net.ParseIP("192.168.255.255"),
+	},
+	ipRange{
+		start: net.ParseIP("198.18.0.0"),
+		end:   net.ParseIP("198.19.255.255"),
+	},
 }
-
 
 // isPrivateSubnet - check to see if this ip is in a private subnet
 func isPrivateSubnet(ipAddress net.IP) bool {
-    // my use case is only concerned with ipv4 atm
-    if ipCheck := ipAddress.To4(); ipCheck != nil {
-        // iterate over all our ranges
-        for _, r := range privateRanges {
-            // check if this ip is in a private range
-            if inRange(r, ipAddress){
-                return true
-            }
-        }
-    }
-    return false
+	// my use case is only concerned with ipv4 atm
+	if ipCheck := ipAddress.To4(); ipCheck != nil {
+		// iterate over all our ranges
+		for _, r := range privateRanges {
+			// check if this ip is in a private range
+			if inRange(r, ipAddress) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func getIPAdress(r *http.Request) string {
-    for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
-        addresses := strings.Split(r.Header.Get(h), ",")
-        // march from right to left until we get a public address
-        // that will be the address right before our proxy.
-        for i := len(addresses) -1 ; i >= 0; i-- {
-            ip := strings.TrimSpace(addresses[i])
+	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
+		addresses := strings.Split(r.Header.Get(h), ",")
+		// march from right to left until we get a public address
+		// that will be the address right before our proxy.
+		for i := len(addresses) - 1; i >= 0; i-- {
+			ip := strings.TrimSpace(addresses[i])
 			realIP, _, err := net.SplitHostPort(ip)
 			if err != nil {
 				realIP = ip
@@ -183,18 +182,22 @@ func getIPAdress(r *http.Request) string {
 
 			parsedId := net.ParseIP(realIP)
 			if !parsedId.IsGlobalUnicast() || isPrivateSubnet(parsedId) {
-                // bad address, go to next
-                continue
-            }
-            return realIP
-        }
-    }
-    return ""
+				// bad address, go to next
+				continue
+			}
+			return realIP
+		}
+	}
+	return ""
 }
 
 type Captcha struct {
 	client *hcaptcha.Client
 	secret string
+}
+
+type Auth struct {
+	code string
 }
 
 func NewCaptcha(hcaptchaSiteKey, hcaptchaSecret string) *Captcha {
@@ -203,6 +206,12 @@ func NewCaptcha(hcaptchaSiteKey, hcaptchaSecret string) *Captcha {
 	return &Captcha{
 		client: client,
 		secret: hcaptchaSecret,
+	}
+}
+
+func NewAuth(code string) *Auth {
+	return &Auth{
+		code: code,
 	}
 }
 
@@ -219,4 +228,51 @@ func (c *Captcha) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Ha
 	}
 
 	next.ServeHTTP(w, r)
+}
+
+func (c *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		// If the cookie is not set, return an unauthorized status
+		if err == http.ErrNoCookie {
+			renderJSON(w, loginResponse{Message: "Invalid login. Please authenticate with discord first"}, http.StatusUnauthorized)
+			return
+		}
+		// For any other error, return a bad request status
+		renderJSON(w, loginResponse{Message: "Invalid login. Please authenticate with discord first"}, http.StatusBadRequest)
+		return
+	}
+
+	token := cookie.Value
+
+	isValid := validateToken(token)
+	if !isValid {
+		renderJSON(w, loginResponse{Message: "Invalid login. Please authenticate with discord first"}, http.StatusUnauthorized)
+		return
+	}
+
+	next.ServeHTTP(w, r)
+}
+
+func validateToken(token string) bool {
+	req, err := http.NewRequest("GET", "https://discord.com/api/users/@me", nil)
+	if err != nil {
+		return false
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	// Check if the response status code is 200 OK
+	if resp.StatusCode == http.StatusOK {
+		return true
+	}
+
+	return false
 }

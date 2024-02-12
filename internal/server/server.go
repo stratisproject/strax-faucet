@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -34,7 +36,10 @@ func (s *Server) setupRouter() *http.ServeMux {
 	router.Handle("/", http.FileServer(web.Dist()))
 	limiter := NewLimiter(s.cfg.proxyCount, time.Duration(s.cfg.interval)*time.Minute)
 	hcaptcha := NewCaptcha(s.cfg.hcaptchaSiteKey, s.cfg.hcaptchaSecret)
-	router.Handle("/api/claim", negroni.New(limiter, hcaptcha, negroni.Wrap(s.handleClaim())))
+	auth := NewAuth("")
+	router.Handle("/api/login", s.handleLogin())
+	router.Handle("/api/check", negroni.New(auth, negroni.Wrap(s.handleLoginCheck())))
+	router.Handle("/api/claim", negroni.New(limiter, hcaptcha, auth, negroni.Wrap(s.handleClaim())))
 	router.Handle("/api/info", s.handleInfo())
 
 	return router
@@ -109,9 +114,105 @@ func (s *Server) handleInfo() http.HandlerFunc {
 			Symbol:          s.cfg.symbol,
 			Payout:          strconv.Itoa(s.cfg.payout),
 			HcaptchaSiteKey: s.cfg.hcaptchaSiteKey,
-			RemoteAddr:	  	 r.RemoteAddr,
-			Forward: 		 r.Header.Get("X-Forwarded-For"),
-			RealIP: 		 r.Header.Get("X-Real-IP"),
+			RemoteAddr:      r.RemoteAddr,
+			Forward:         r.Header.Get("X-Forwarded-For"),
+			RealIP:          r.Header.Get("X-Real-IP"),
 		}, http.StatusOK)
 	}
+}
+
+func (s *Server) handleLogin() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		if r.Method != "POST" {
+			http.NotFound(w, r)
+			return
+		}
+
+		// The error always be nil since it has already been handled in limiter
+		code, _ := readCode(r)
+
+		token, err := exchangeCodeForToken(code, s.cfg.discordClientId, s.cfg.discordClientSecret, s.cfg.discordRedirectUrl)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		expirationTime := time.Now().Add(24 * time.Hour) // Expires in 24 hours
+		http.SetCookie(w, &http.Cookie{
+			Name:     "token",
+			Value:    token.AccessToken, // Replace with the actual token value
+			Expires:  expirationTime,
+			HttpOnly: true, // This makes the cookie inaccessible to JavaScript
+		})
+
+		// You can send back a simple response
+		//w.Write([]byte("User logged in"))
+
+		renderJSON(w, authResponse{
+			Token: token.AccessToken,
+		}, http.StatusOK)
+	}
+}
+
+func (s *Server) handleLoginCheck() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("token")
+		if err != nil {
+			// Handle the case where the cookie is not present or invalid
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Additional checks can be performed here, such as validating the token
+		log.Info(cookie.Value)
+
+		// If everything is okay
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func exchangeCodeForToken(code, discordClientId, discordClientSecret, discordRedirectUrl string) (*discordTokenResponse, error) {
+	log.Info(discordClientId, discordClientSecret, discordRedirectUrl, code)
+	// Prepare the request data
+	data := url.Values{}
+	data.Set("client_id", discordClientId)
+	data.Set("client_secret", discordClientSecret)
+	data.Set("grant_type", "authorization_code")
+	data.Set("code", code)
+	data.Set("redirect_uri", discordRedirectUrl)
+	data.Set("scope", "identify")
+
+	// Make the request
+	req, err := http.NewRequest("POST", "https://discord.com/api/oauth2/token", strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	log.Info(resp.Body)
+
+	// Decode the response
+	var tokenResp discordTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	log.WithFields(log.Fields{
+		"token":             tokenResp.AccessToken,
+		"erorr":             tokenResp.Error,
+		"error_description": tokenResp.ErrorDesc,
+	}).Info("Response")
+
+	return &tokenResp, nil
 }
