@@ -125,7 +125,7 @@
           const currentChainId = window.ethereum.chainId;
 
           if (currentChainId === '0x32195') {
-            networkLabel = 'Straits Auroria Testnet'; // Correct network
+            networkLabel = 'Stratis Auroria Testnet'; // Correct network
             await connectMetaMask();
           } else {
             networkLabel = 'Switch Network'; // Incorrect network
@@ -149,7 +149,7 @@
           method: 'wallet_addEthereumChain',
           params: [{
             chainId: '0x32195', // The chainId of the network in hexadecimal, 205205 in decimal
-            chainName: 'Straits Auroria Testnet',
+            chainName: 'Stratis Auroria Testnet',
             nativeCurrency: {
                 name: 'STRAX',
                 symbol: 'STRAX', // Up to 5 characters
