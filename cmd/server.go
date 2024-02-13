@@ -26,9 +26,9 @@ var (
 	versionFlag  = flag.Bool("version", false, "Print version number")
 
 	//payoutFlag   = flag.Int("faucet_amount", 10000, "Number of Ethers to transfer per user request")
-	intervalFlag = flag.Int("faucet_minutes", 1440, "Number of minutes to wait between funding rounds")
-	netnameFlag  = flag.String("faucet_name", os.Getenv("FAUCET_NAME"), "Network name to display on the frontend")
-	symbolFlag   = flag.String("faucet_symbol", os.Getenv("FAUCET_SYMBOL"), "Token symbol to display on the frontend")
+	//intervalFlag = flag.Int("faucet_minutes", os.Getenv("FAUCET_MINUTES"), "Number of minutes to wait between funding rounds")
+	netnameFlag = flag.String("faucet_name", os.Getenv("FAUCET_NAME"), "Network name to display on the frontend")
+	symbolFlag  = flag.String("faucet_symbol", os.Getenv("FAUCET_SYMBOL"), "Token symbol to display on the frontend")
 
 	keyJSONFlag  = flag.String("wallet_keyjson", os.Getenv("KEYSTORE"), "Keystore file to fund user requests with")
 	keyPassFlag  = flag.String("wallet_keypass", "password.txt", "Passphrase text file to decrypt keystore")
@@ -37,6 +37,10 @@ var (
 
 	hcaptchaSiteKeyFlag = flag.String("hcaptcha_sitekey", os.Getenv("HCAPTCHA_SITEKEY"), "hCaptcha sitekey")
 	hcaptchaSecretFlag  = flag.String("hcaptcha_secret", os.Getenv("HCAPTCHA_SECRET"), "hCaptcha secret")
+
+	discordClientId     = flag.String("discord_client_id", os.Getenv("DISCORD_CLIENTID"), "Discord client id for oauth2")
+	discordClientSecret = flag.String("discord_client_secret", os.Getenv("DISCORD_CLIENTSECRET"), "Discord client secret for oauth2")
+	discordRedirectUrl  = flag.String("discord_redirect_url", os.Getenv("DISCORD_REDIRECTURL"), "Discord redirect url for oauth2")
 )
 
 func init() {
@@ -68,13 +72,19 @@ func Execute() {
 	}
 	httpPortFlag := flag.Int("httpport", port, "Listener port to serve HTTP connection")
 
+	interval, err := strconv.Atoi(os.Getenv("FAUCET_MINUTES"))
+	if err != nil {
+		interval = 1440
+	}
+	intervalFlag := flag.Int("faucet_minutes", interval, "Number of minutes to wait between funding rounds")
+
 	faucetAmount, err := strconv.Atoi(os.Getenv("FAUCET_AMOUNT"))
 	if err != nil {
 		faucetAmount = 10000
 	}
 	payoutFlag := flag.Int("faucet.amount", faucetAmount, "Number of Ethers to transfer per user request")
 
-	config := server.NewConfig(*netnameFlag, *symbolFlag, *httpPortFlag, *intervalFlag, *payoutFlag, *proxyCntFlag, *hcaptchaSiteKeyFlag, *hcaptchaSecretFlag)
+	config := server.NewConfig(*netnameFlag, *symbolFlag, *httpPortFlag, *intervalFlag, *payoutFlag, *proxyCntFlag, *hcaptchaSiteKeyFlag, *hcaptchaSecretFlag, *discordClientId, *discordClientSecret, *discordRedirectUrl)
 	go server.NewServer(txBuilder, config).Run()
 
 	c := make(chan os.Signal, 1)

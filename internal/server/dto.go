@@ -16,8 +16,22 @@ type claimRequest struct {
 	Address string `json:"address"`
 }
 
+type loginRequest struct {
+	Code string `json:"code"`
+}
+
 type claimResponse struct {
 	Message string `json:"msg"`
+}
+
+type loginResponse struct {
+	Message string `json:"msg"`
+}
+
+type discordTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	Error       string `json:"error"`
+	ErrorDesc   string `json:"error_description"`
 }
 
 type infoResponse struct {
@@ -26,6 +40,14 @@ type infoResponse struct {
 	Payout          string `json:"payout"`
 	Symbol          string `json:"symbol"`
 	HcaptchaSiteKey string `json:"hcaptcha_sitekey,omitempty"`
+	RemoteAddr      string `json:"remote_addr,omitempty"`
+	Forward         string `json:"forward,omitempty"`
+	RealIP          string `json:"real_ip,omitempty"`
+	DiscorClientId  string `json:"discord_client_id"`
+}
+
+type authResponse struct {
+	Token string `json:"token"`
 }
 
 type malformedRequest struct {
@@ -90,6 +112,24 @@ func readAddress(r *http.Request) (string, error) {
 	}
 
 	return claimReq.Address, nil
+}
+
+func readCode(r *http.Request) (string, error) {
+	var loginReq loginRequest
+	if err := decodeJSONBody(r, &loginReq); err != nil {
+		return "", err
+	}
+
+	return loginReq.Code, nil
+}
+
+func readToken(r *http.Request) (string, error) {
+	var discordRes discordTokenResponse
+	if err := decodeJSONBody(r, &discordRes); err != nil {
+		return "", err
+	}
+
+	return discordRes.AccessToken, nil
 }
 
 func renderJSON(w http.ResponseWriter, v interface{}, code int) error {

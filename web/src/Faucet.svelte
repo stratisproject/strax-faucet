@@ -4,7 +4,6 @@
   import { CloudflareProvider } from '@ethersproject/providers';
   import { setDefaults as setToast, toast } from 'bulma-toast';
   import SocialIcons from '@rodneylab/svelte-social-icons';
-  import { web3 } from 'svelte-web3'
 
   let input = null;
   let faucetInfo = {
@@ -13,22 +12,71 @@
     payout: 1,
     symbol: 'ETH',
     hcaptcha_sitekey: '',
+    discord_client_id: '',
   };
 
+  let loggedIn = false;
   let mounted = false;
   let hcaptchaLoaded = false;
+  let loginUrl = '';
 
   onMount(async () => {
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+
+    const res = await fetch('/api/info');
+    faucetInfo = await res.json();
+    loginUrl = `https://discord.com/api/oauth2/authorize?client_id=${faucetInfo.discord_client_id}&redirect_uri=${window.location.href}&response_type=code&scope=identify%20email`;
+
+    await checkAuthentication();
+
+    if (code) {
+      exchangeCodeForToken(code);      
+    }
+
     await checkNetwork();
     if (window.ethereum) {
         window.ethereum.on('chainChanged', (_chainId) => {
-            checkNetwork();
+          checkNetwork();
         });
     }
-    const res = await fetch('/api/info');
-    faucetInfo = await res.json();
+    
     mounted = true;    
   });
+
+  async function checkAuthentication() {
+    try {
+      const response = await fetch('/api/check', {
+        credentials: 'include' // Ensures cookies are included in the request
+      });
+
+      if (response.ok) {
+        loggedIn = true;
+      } else {
+        loggedIn = false;
+      }
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+    }
+  }
+
+  async function exchangeCodeForToken(code) {
+    // Make an API request to your backend with the code
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+
+    if (response.ok) {
+      loggedIn = true;
+      const newUrl = window.location.pathname; // This retains the current path without the query parameters
+      window.history.replaceState({}, '', newUrl);
+    } else {
+      // Handle errors
+    }
+  }
 
   window.hcaptchaOnLoad = () => {
     hcaptchaLoaded = true;
@@ -45,16 +93,40 @@
     });
   }
 
-  let networkLabel = 'Checking Network...';
+  let accounts = [];
 
+  async function connectMetaMask() {
+    if (window.ethereum) {
+      try {
+        // Request account access
+        accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        console.log('Connected account:', accounts[0]);
+        input = accounts[0];
+        // Proceed with the connected account
+      } catch (error) {
+        if (error.code === 4001) {
+          // User denied account access
+          console.log('User denied account access');
+        } else {
+          console.error('Error connecting to MetaMask:', error);
+        }
+      }
+    } else {
+      console.log('MetaMask is not installed');
+    }
+  }
+
+  let networkLabel = 'Checking Network...';
+  
   async function checkNetwork() {
-    setTimeout(() => {
+    setTimeout(async () => {
       if (window.ethereum) {
         try {
           const currentChainId = window.ethereum.chainId;
 
           if (currentChainId === '0x32195') {
-            networkLabel = 'Auroria'; // Correct network
+            networkLabel = 'Stratis Auroria Testnet'; // Correct network
+            await connectMetaMask();
           } else {
             networkLabel = 'Switch Network'; // Incorrect network
           }
@@ -66,30 +138,30 @@
           console.log('Ethereum wallet not detected');
           networkLabel = 'No Wallet Detected';
       }
-    }, 3000);
+    }, 2000);
   }
 
   async function addCustomNetwork() {
     if (window.ethereum) {
-        try {
-            // Request to add a custom network
-            await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                    chainId: '0x32195', // The chainId of the network in hexadecimal, 205205 in decimal
-                    chainName: 'Auroria',
-                    nativeCurrency: {
-                        name: 'STRAX',
-                        symbol: 'STRAX', // Up to 5 characters
-                        decimals: 18
-                    },
-                    rpcUrls: ['https://auroria.rpc.stratisevm.com/'],
-                    blockExplorerUrls: ['https://auroria.explorer.stratisevm.com/']
-                }],
-            });
-        } catch (addError) {
-            alert('Error adding Auroria network:');
-        }
+      try {
+        // Request to add a custom network
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x32195', // The chainId of the network in hexadecimal, 205205 in decimal
+            chainName: 'Stratis Auroria Testnet',
+            nativeCurrency: {
+                name: 'STRAX',
+                symbol: 'STRAX', // Up to 5 characters
+                decimals: 18
+            },
+            rpcUrls: ['https://auroria.rpc.stratisevm.com/'],
+            blockExplorerUrls: ['https://auroria.explorer.stratisevm.com/']
+          }],
+        });
+      } catch (addError) {
+        alert('Error adding Auroria network:');
+      }
     } else {
       alert('Metamask wallet is not installed');
     }
@@ -145,6 +217,7 @@
 
       const res = await fetch('/api/claim', {
         method: 'POST',
+        credentials: 'include',
         headers,
         body: JSON.stringify({
           address,
@@ -335,60 +408,6 @@
       window.requestAnimationFrame(this.animate);
     }
   }
-
-  // Box highlighter
-  // class Highlighter {
-  //   constructor(containerElement) {
-  //     this.container = containerElement;
-  //     this.boxes = Array.from(this.container.children);
-  //     this.mouse = {
-  //       x: 0,
-  //       y: 0,
-  //     };
-  //     this.containerSize = {
-  //       w: 0,
-  //       h: 0,
-  //     };
-  //     this.initContainer = this.initContainer.bind(this);
-  //     this.onMouseMove = this.onMouseMove.bind(this);
-  //     this.init();
-  //   }
-
-  //   initContainer() {
-  //     this.containerSize.w = this.container.offsetWidth;
-  //     this.containerSize.h = this.container.offsetHeight;        
-  //   }
-
-  //   onMouseMove(event) {
-  //     const { clientX, clientY } = event;
-  //     const rect = this.container.getBoundingClientRect();
-  //     const { w, h } = this.containerSize;
-  //     const x = clientX - rect.left;
-  //     const y = clientY - rect.top;
-  //     const inside = x < w && x > 0 && y < h && y > 0;
-  //     if (inside) {
-  //       this.mouse.x = x;
-  //       this.mouse.y = y;
-  //       this.boxes.forEach((box) => {
-  //         const boxX = -(box.getBoundingClientRect().left - rect.left) + this.mouse.x;
-  //         const boxY = -(box.getBoundingClientRect().top - rect.top) + this.mouse.y;
-  //         box.style.setProperty('--mouse-x', `${boxX}px`);
-  //         box.style.setProperty('--mouse-y', `${boxY}px`);
-  //       });
-  //     }
-  //   }
-
-  //   init() {
-  //     this.initContainer();
-  //     window.addEventListener('resize', this.initContainer);
-  //     window.addEventListener('mousemove', this.onMouseMove);
-  //   }  
-  // }
-
-  // const highlighters = document.querySelectorAll('[data-highlighter]');
-  // highlighters.forEach((highlighter) => {
-  //   new Highlighter(highlighter);
-  // });
 </script>
 
 <svelte:head>
@@ -475,11 +494,19 @@
                 </div>
               </div>
               <div class="mt-2">
-                <button on:click={handleRequest} type="button"
-                  class="btn text-slate-300 hover:text-white transition duration-150 ease-in-out w-full group [background:linear-gradient(theme(colors.slate.900),_theme(colors.slate.900))_padding-box,_conic-gradient(theme(colors.slate.400),_theme(colors.slate.700)_25%,_theme(colors.slate.700)_75%,_theme(colors.slate.400)_100%)_border-box] relative before:absolute before:inset-0 before:bg-slate-800/30 before:rounded-full before:pointer-events-none">
-                  Request <span
-                    class="tracking-normal text-purple-300 group-hover:translate-x-0.5 transition-transform duration-150 ease-in-out ml-1">-&gt;</span>
-                </button>
+                {#if loggedIn}
+                  <button on:click={handleRequest} type="button"
+                    class="btn text-slate-300 hover:text-white transition duration-150 ease-in-out w-full group [background:linear-gradient(theme(colors.slate.900),_theme(colors.slate.900))_padding-box,_conic-gradient(theme(colors.slate.400),_theme(colors.slate.700)_25%,_theme(colors.slate.700)_75%,_theme(colors.slate.400)_100%)_border-box] relative before:absolute before:inset-0 before:bg-slate-800/30 before:rounded-full before:pointer-events-none">
+                    Request <span
+                      class="tracking-normal text-purple-300 group-hover:translate-x-0.5 transition-transform duration-150 ease-in-out ml-1">-&gt;</span>
+                  </button>                
+                {:else}
+                  <a href={loginUrl}
+                    class="btn text-slate-300 hover:text-white transition duration-150 ease-in-out w-full group [background:linear-gradient(theme(colors.slate.900),_theme(colors.slate.900))_padding-box,_conic-gradient(theme(colors.slate.400),_theme(colors.slate.700)_25%,_theme(colors.slate.700)_75%,_theme(colors.slate.400)_100%)_border-box] relative before:absolute before:inset-0 before:bg-slate-800/30 before:rounded-full before:pointer-events-none">
+                    Login with Discord <span
+                      class="tracking-normal text-purple-300 group-hover:translate-x-0.5 transition-transform duration-150 ease-in-out ml-1">-&gt;</span>
+                  </a>
+                {/if}
               </div>
               <p>&nbsp;</p>
               <p>&nbsp;</p>
