@@ -27,7 +27,8 @@
 
     const res = await fetch('/api/info');
     faucetInfo = await res.json();
-    loginUrl = `https://discord.com/api/oauth2/authorize?client_id=${faucetInfo.discord_client_id}&redirect_uri=${window.location.href}&response_type=code&scope=identify%20email`;
+    const baseUrl = window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port : '') + "/";
+    loginUrl = `https://discord.com/api/oauth2/authorize?client_id=${faucetInfo.discord_client_id}&redirect_uri=${baseUrl}&response_type=code&scope=identify%20email%20guilds.members.read%20guilds`;
 
     await checkAuthentication();
 
@@ -74,7 +75,10 @@
       const newUrl = window.location.pathname; // This retains the current path without the query parameters
       window.history.replaceState({}, '', newUrl);
     } else {
-      // Handle errors
+      loggedIn = false;
+      const newUrl = window.location.pathname; // This retains the current path without the query parameters
+      window.history.replaceState({}, '', newUrl);
+      toast({ message: "Make sure you are a verified user in Stratis Dscord", type: 'is-warning' });
     }
   }
 

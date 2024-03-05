@@ -34,6 +34,10 @@ type discordTokenResponse struct {
 	ErrorDesc   string `json:"error_description"`
 }
 
+type isPendingResponse struct {
+	Pending bool `json:"pending"`
+}
+
 type infoResponse struct {
 	Account         string `json:"account"`
 	Network         string `json:"network"`

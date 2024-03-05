@@ -139,6 +139,22 @@ func (s *Server) handleLogin() http.HandlerFunc {
 			return
 		}
 
+		if token.AccessToken == "" {
+			http.Error(w, "Could not login", http.StatusUnauthorized)
+			return
+		}
+
+		isPending, err := checkIfPending(token.AccessToken)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		if isPending.Pending {
+			http.Error(w, "User is not verified in STratis discord", http.StatusBadRequest)
+			return
+		}
+
 		expirationTime := time.Now().Add(24 * time.Hour) // Expires in 24 hours
 		http.SetCookie(w, &http.Cookie{
 			Name:     "token",
@@ -146,9 +162,6 @@ func (s *Server) handleLogin() http.HandlerFunc {
 			Expires:  expirationTime,
 			HttpOnly: true, // This makes the cookie inaccessible to JavaScript
 		})
-
-		// You can send back a simple response
-		//w.Write([]byte("User logged in"))
 
 		renderJSON(w, authResponse{
 			Token: token.AccessToken,
@@ -216,4 +229,33 @@ func exchangeCodeForToken(code, discordClientId, discordClientSecret, discordRed
 	}).Info("Response")
 
 	return &tokenResp, nil
+}
+
+func checkIfPending(token string) (*isPendingResponse, error) {
+	// Make the request
+	req, err := http.NewRequest("GET", "https://discord.com/api/users/@me/guilds/404643249798512652/member", nil)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	log.Info(resp.Body)
+
+	// Decode the response
+	var isPendingResp isPendingResponse
+	if err := json.NewDecoder(resp.Body).Decode(&isPendingResp); err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	return &isPendingResp, nil
 }
