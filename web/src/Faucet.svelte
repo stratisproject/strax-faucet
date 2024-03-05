@@ -78,7 +78,7 @@
       loggedIn = false;
       const newUrl = window.location.pathname; // This retains the current path without the query parameters
       window.history.replaceState({}, '', newUrl);
-      toast({ message: "Make sure you are a verified user in Stratis Dscord", type: 'is-warning' });
+      toast({ message: "Make sure you are a verified user in Stratis Discord", type: 'is-warning' });
     }
   }
 

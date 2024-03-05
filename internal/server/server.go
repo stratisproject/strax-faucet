@@ -151,7 +151,7 @@ func (s *Server) handleLogin() http.HandlerFunc {
 		}
 
 		if isPending.Pending {
-			http.Error(w, "User is not verified in STratis discord", http.StatusBadRequest)
+			http.Error(w, "User is not verified in Stratis discord", http.StatusBadRequest)
 			return
 		}
 
