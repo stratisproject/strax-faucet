@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -256,7 +257,7 @@ func (c *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handl
 }
 
 func validateToken(token string) bool {
-	req, err := http.NewRequest("GET", "https://discord.com/api/users/@me", nil)
+	req, err := http.NewRequest("GET", "https://discord.com/api/users/@me/guilds/404643249798512652/member", nil)
 	if err != nil {
 		return false
 	}
@@ -271,7 +272,13 @@ func validateToken(token string) bool {
 
 	// Check if the response status code is 200 OK
 	if resp.StatusCode == http.StatusOK {
-		return true
+		var isPendingResp isPendingResponse
+		if err := json.NewDecoder(resp.Body).Decode(&isPendingResp); err != nil {
+			log.Error(err)
+			return false
+		}
+
+		return !isPendingResp.Pending
 	}
 
 	return false
