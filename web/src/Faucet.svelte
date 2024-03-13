@@ -551,13 +551,13 @@
             </li>
             <li class="ml-2">
               <a class="flex justify-center items-center text-purple-500 hover:text-purple-400 transition duration-150 ease-in-out"
-                href="https://github.com/stratisproject" aria-label="Dev.to">
+                href="https://discordapp.com/invite/9tDyfZs" aria-label="Dev.to">
                 <SocialIcons width="32" height="32" fgColor="#a855f7" bgColor="#262626" network="discord" alt="discord"/>
               </a>
             </li>
             <li class="ml-2">
               <a class="flex justify-center items-center text-purple-500 hover:text-purple-400 transition duration-150 ease-in-out"
-                href="https://discordapp.com/invite/9tDyfZs" aria-label="Github">
+                href="https://github.com/stratisproject" aria-label="Github">
                 <SocialIcons width="32" height="32" fgColor="#a855f7" bgColor="#262626" network="github" alt="github"/>
               </a>
             </li>
